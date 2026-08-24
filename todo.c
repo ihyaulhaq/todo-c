@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct {
   char **items;
@@ -9,7 +10,6 @@ typedef struct {
 } TODOList;
 
 char *read_task(void) {
-  /* task nya realloc setiap habis*/
   size_t task_len = 0;
   size_t task_cap = 64;
   char *task = malloc(task_cap);
@@ -19,12 +19,11 @@ char *read_task(void) {
     return NULL;
   }
 
+  printf("add your task: ");
   while ((c = getchar()) != '\n' && c != EOF) {
-    // printf("task len :%i| task cap: %i \n", (int)task_len, (int)task_cap);
     if (task_len + 1 >= task_cap) {
       task_cap *= 2;
       char *temp = realloc(task, task_cap);
-      // printf("task len :%i| task cap: %i \n", (int)task_len, (int)task_cap);
       if (temp == NULL) {
         free(task);
         return NULL;
@@ -50,41 +49,82 @@ char **expand_list(char **list, size_t len, size_t *cap) {
   return temp;
 }
 
-int main(void) {
-  TODOList tasks = {
-      .items = NULL,
-      .size = 0,
-      .capacity = 8,
-  };
-
-  tasks.items = malloc(tasks.capacity * sizeof(*tasks.items));
-  // printf("TODO cap: %d\n", (int)tasks.capacity);
-  if (tasks.items == NULL) {
-    fprintf(stderr, "Failed to allocate task list\n");
-    return EXIT_FAILURE;
-  }
-
+int add_list(TODOList *tasks) {
   // get the task input
   char *task = read_task();
   if (task == NULL) {
     fprintf(stderr, "Failed to read input\n");
-    return EXIT_FAILURE;
+    return 1;
   }
 
-  char **temp = expand_list(tasks.items, tasks.size, &tasks.capacity);
+  // ecpand if the list not enough
+  char **temp = expand_list(tasks->items, tasks->size, &tasks->capacity);
   if (temp == NULL) {
     fprintf(stderr, "Failed to grow task list\n");
     free(task);
-    free(tasks.items);
-    return EXIT_FAILURE;
+    // free(tasks->items);
+    return 1;
   }
 
-  tasks.items = temp;
-  tasks.items[tasks.size++] = task;
+  tasks->items = temp;
+  tasks->items[tasks->size++] = task;
 
-  printf("--> %s\n", tasks.items[0]);
+  for (size_t i = 0; i < tasks->size; i++) {
+    printf("--> %s\n", tasks->items[i]);
+  }
 
-  // Cleanup
+  return 0;
+}
+
+int main(void) {
+  char buff[8];
+  TODOList tasks = {
+      .items = malloc(8 * sizeof(*tasks.items)),
+      .size = 0,
+      .capacity = 8,
+  };
+
+  if (tasks.items == NULL) {
+    fprintf(stderr, "Failed to allocate task list\n");
+    return 1;
+  };
+
+  printf("=========== Current List ===========\n");
+  for (size_t i = 0; i < tasks.size; i++) {
+    printf("-->%s\n", tasks.items[i]);
+  }
+  printf("\n[a] Add task\n");
+  printf("[q] Quit\n");
+  printf("[l] List\n");
+  while (1) {
+    printf("> ");
+
+    char *command = fgets(buff, sizeof(buff), stdin);
+    if (command == NULL)
+      break;
+    command[strcspn(command, "\n")] = '\0';
+
+    if (strcmp(command, "a") == 0) {
+      add_list(&tasks);
+
+    } else if (strcmp(command, "l") == 0) {
+      printf("=========== Current List ===========\n");
+      if (tasks.size == 0) {
+        printf("=========== Empty ===========\n");
+      } else {
+        for (size_t i = 0; i < tasks.size; i++) {
+          printf("-->%s\n", tasks.items[i]);
+        }
+      }
+
+    } else if (strcmp(command, "q") == 0) {
+      break;
+
+    } else {
+      printf("command doesn't exist\n");
+    }
+  }
+
   for (size_t i = 0; i < tasks.size; i++) {
     free(tasks.items[i]);
   }
