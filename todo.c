@@ -13,7 +13,6 @@ char *read_task(void) {
   size_t task_len = 0;
   size_t task_cap = 64;
   char *task = malloc(task_cap);
-
   int c;
 
   if (task == NULL) {
@@ -21,32 +20,37 @@ char *read_task(void) {
   }
 
   while ((c = getchar()) != '\n' && c != EOF) {
-
+    // printf("task len :%i| task cap: %i \n", (int)task_len, (int)task_cap);
     if (task_len + 1 >= task_cap) {
       task_cap *= 2;
-
       char *temp = realloc(task, task_cap);
-
+      // printf("task len :%i| task cap: %i \n", (int)task_len, (int)task_cap);
       if (temp == NULL) {
         free(task);
         return NULL;
       }
-
       task = temp;
     }
-
     task[task_len++] = c;
   }
-
   task[task_len] = '\0';
   return task;
 }
 
-int main(void) {
+char **expand_list(char **list, size_t len, size_t *cap) {
+  if (len < *cap) {
+    return list;
+  }
+  size_t new_cap = *cap * 2;
+  char **temp = realloc(list, new_cap * sizeof(*list));
+  if (temp == NULL) {
+    return NULL;
+  }
+  *cap = new_cap;
+  return temp;
+}
 
-  // char **tasks = NULL;
-  // size_t tasks_size = 0;
-  // size_t capacity = 0;
+int main(void) {
   TODOList tasks = {
       .items = NULL,
       .size = 0,
@@ -54,7 +58,7 @@ int main(void) {
   };
 
   tasks.items = malloc(tasks.capacity * sizeof(*tasks.items));
-
+  // printf("TODO cap: %d\n", (int)tasks.capacity);
   if (tasks.items == NULL) {
     fprintf(stderr, "Failed to allocate task list\n");
     return EXIT_FAILURE;
@@ -67,22 +71,15 @@ int main(void) {
     return EXIT_FAILURE;
   }
 
-  if (tasks.size >= tasks.capacity) {
-    size_t new_cap = tasks.capacity * 2;
-
-    char **temp = realloc(tasks.items, new_cap);
-
-    if (temp == NULL) {
-      fprintf(stderr, "Failed to grow task list\n");
-      free(task);
-      free(tasks.items);
-      return EXIT_FAILURE;
-    }
-
-    tasks.items = temp;
-    tasks.capacity = new_cap;
+  char **temp = expand_list(tasks.items, tasks.size, &tasks.capacity);
+  if (temp == NULL) {
+    fprintf(stderr, "Failed to grow task list\n");
+    free(task);
+    free(tasks.items);
+    return EXIT_FAILURE;
   }
 
+  tasks.items = temp;
   tasks.items[tasks.size++] = task;
 
   printf("--> %s\n", tasks.items[0]);
