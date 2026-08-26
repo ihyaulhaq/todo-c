@@ -36,6 +36,17 @@ char *read_task(void) {
   return task;
 }
 
+void print_list(TODOList *tasks) {
+  printf("\n=========== Current List ===========\n");
+  if (tasks->size == 0) {
+    printf("\n=========== Empty ===========\n");
+  } else {
+    for (size_t i = 0; i < tasks->size; i++) {
+      printf("%zu. %s [ ]\n", i + 1, tasks->items[i]);
+    }
+  }
+}
+
 char **expand_list(char **list, size_t len, size_t *cap) {
   if (len < *cap) {
     return list;
@@ -49,7 +60,7 @@ char **expand_list(char **list, size_t len, size_t *cap) {
   return temp;
 }
 
-int add_list(TODOList *tasks) {
+int add_task(TODOList *tasks) {
   // get the task input
   char *task = read_task();
   if (task == NULL) {
@@ -62,17 +73,39 @@ int add_list(TODOList *tasks) {
   if (temp == NULL) {
     fprintf(stderr, "Failed to grow task list\n");
     free(task);
-    // free(tasks->items);
     return 1;
   }
 
   tasks->items = temp;
   tasks->items[tasks->size++] = task;
+  print_list(tasks);
+  return 0;
+}
 
-  for (size_t i = 0; i < tasks->size; i++) {
-    printf("--> %s\n", tasks->items[i]);
+int delete_task(TODOList *tasks) {
+  if (tasks->size == 0) {
+    printf("list empty\n");
+    return 1;
+  }
+  char buff[8];
+  printf("input number task to delete it\n > ");
+  if (fgets(buff, sizeof(buff), stdin) == NULL) {
+    return 1;
+  }
+  int idx = atoi(buff) - 1;
+  if (idx < 0 || (size_t)idx >= tasks->size) {
+    printf("invalid number\n");
+    return 1;
   }
 
+  free(tasks->items[idx]);
+  for (size_t i = idx; i + 1 < tasks->size; i++) {
+    tasks->items[i] = tasks->items[i + 1];
+  }
+  tasks->size--;
+
+  printf("success delete task number %d\n", idx + 1);
+  print_list(tasks);
   return 0;
 }
 
@@ -89,15 +122,14 @@ int main(void) {
     return 1;
   };
 
-  printf("=========== Current List ===========\n");
-  for (size_t i = 0; i < tasks.size; i++) {
-    printf("-->%s\n", tasks.items[i]);
-  }
+  print_list(&tasks);
   printf("\n[a] Add task\n");
+  printf("[d] delete task\n");
   printf("[q] Quit\n");
   printf("[l] List\n");
+
   while (1) {
-    printf("> ");
+    printf("\n> ");
 
     char *command = fgets(buff, sizeof(buff), stdin);
     if (command == NULL)
@@ -105,17 +137,13 @@ int main(void) {
     command[strcspn(command, "\n")] = '\0';
 
     if (strcmp(command, "a") == 0) {
-      add_list(&tasks);
+      add_task(&tasks);
+
+    } else if (strcmp(command, "d") == 0) {
+      delete_task(&tasks);
 
     } else if (strcmp(command, "l") == 0) {
-      printf("=========== Current List ===========\n");
-      if (tasks.size == 0) {
-        printf("=========== Empty ===========\n");
-      } else {
-        for (size_t i = 0; i < tasks.size; i++) {
-          printf("-->%s\n", tasks.items[i]);
-        }
-      }
+      print_list(&tasks);
 
     } else if (strcmp(command, "q") == 0) {
       break;
