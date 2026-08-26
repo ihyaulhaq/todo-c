@@ -1,38 +1,54 @@
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 typedef struct {
-  char **items;
+  char *text;
+  bool is_done;
+  size_t size;
+  size_t capacity;
+} TODOItem;
+
+typedef struct {
+  TODOItem *items;
   size_t size;
   size_t capacity;
 } TODOList;
 
-char *read_task(void) {
-  size_t task_len = 0;
-  size_t task_cap = 64;
-  char *task = malloc(task_cap);
+TODOItem read_task(void) {
   int c;
+  TODOItem task = {
+      .size = 0,
+      .capacity = 64,
+      .text = NULL,
+      .is_done = false,
+  };
 
-  if (task == NULL) {
-    return NULL;
+  task.text = malloc(task.capacity);
+  if (task.text == NULL) {
+    return task;
   }
 
   printf("add your task: ");
   while ((c = getchar()) != '\n' && c != EOF) {
-    if (task_len + 1 >= task_cap) {
-      task_cap *= 2;
-      char *temp = realloc(task, task_cap);
+    if (task.size + 1 >= task.capacity) {
+      task.capacity *= 2;
+      char *temp = realloc(task.text, task.capacity);
       if (temp == NULL) {
-        free(task);
-        return NULL;
+        free(task.text);
+        task.text = NULL;
+        task.size = 0;
+        task.capacity = 0;
+        return task;
       }
-      task = temp;
+      task.text = temp;
     }
-    task[task_len++] = c;
+    task.text[task.size++] = c;
   }
-  task[task_len] = '\0';
+  task.text[task.size] = '\0';
   return task;
 }
 
@@ -42,17 +58,18 @@ void print_list(TODOList *tasks) {
     printf("\n=========== Empty ===========\n");
   } else {
     for (size_t i = 0; i < tasks->size; i++) {
-      printf("%zu. %s [ ]\n", i + 1, tasks->items[i]);
+      printf("%zu. %s [%c]\n", i + 1, tasks->items[i].text,
+             tasks->items[i].is_done ? '#' : ' ');
     }
   }
 }
 
-char **expand_list(char **list, size_t len, size_t *cap) {
+TODOItem *expand_list(TODOItem *list, size_t len, size_t *cap) {
   if (len < *cap) {
     return list;
   }
   size_t new_cap = *cap * 2;
-  char **temp = realloc(list, new_cap * sizeof(*list));
+  TODOItem *temp = realloc(list, new_cap * sizeof(*list));
   if (temp == NULL) {
     return NULL;
   }
@@ -62,17 +79,17 @@ char **expand_list(char **list, size_t len, size_t *cap) {
 
 int add_task(TODOList *tasks) {
   // get the task input
-  char *task = read_task();
-  if (task == NULL) {
+  TODOItem task = read_task();
+  if (task.text == NULL) {
     fprintf(stderr, "Failed to read input\n");
     return 1;
   }
 
   // ecpand if the list not enough
-  char **temp = expand_list(tasks->items, tasks->size, &tasks->capacity);
+  TODOItem *temp = expand_list(tasks->items, tasks->size, &tasks->capacity);
   if (temp == NULL) {
     fprintf(stderr, "Failed to grow task list\n");
-    free(task);
+    free(task.text);
     return 1;
   }
 
@@ -88,7 +105,7 @@ int delete_task(TODOList *tasks) {
     return 1;
   }
   char buff[8];
-  printf("input number task to delete it\n > ");
+  printf("input number task to delete it\n> ");
   if (fgets(buff, sizeof(buff), stdin) == NULL) {
     return 1;
   }
@@ -98,7 +115,7 @@ int delete_task(TODOList *tasks) {
     return 1;
   }
 
-  free(tasks->items[idx]);
+  free(tasks->items[idx].text);
   for (size_t i = idx; i + 1 < tasks->size; i++) {
     tasks->items[i] = tasks->items[i + 1];
   }
@@ -106,6 +123,29 @@ int delete_task(TODOList *tasks) {
 
   printf("success delete task number %d\n", idx + 1);
   print_list(tasks);
+  return 0;
+}
+
+int mark_done(TODOList *tasks) {
+  if (tasks->size == 0) {
+    printf("list empty\n");
+    return 1;
+  }
+  char buff[8];
+  printf("input number task to mark it\n> ");
+  if (fgets(buff, sizeof(buff), stdin) == NULL) {
+    return 1;
+  }
+  uint8_t idx = atoi(buff) - 1;
+  if ((size_t)idx >= tasks->size) {
+    printf("invalid number\n");
+    return 1;
+  }
+
+  tasks->items[idx].is_done = true;
+
+  print_list(tasks);
+
   return 0;
 }
 
@@ -139,6 +179,9 @@ int main(void) {
     if (strcmp(command, "a") == 0) {
       add_task(&tasks);
 
+    } else if (strcmp(command, "m") == 0) {
+      mark_done(&tasks);
+
     } else if (strcmp(command, "d") == 0) {
       delete_task(&tasks);
 
@@ -154,7 +197,7 @@ int main(void) {
   }
 
   for (size_t i = 0; i < tasks.size; i++) {
-    free(tasks.items[i]);
+    free(tasks.items[i].text);
   }
   free(tasks.items);
 
