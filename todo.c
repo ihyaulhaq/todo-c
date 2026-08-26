@@ -6,10 +6,10 @@
 #include <string.h>
 
 typedef struct {
-  char *text;
-  bool is_done;
   size_t size;
   size_t capacity;
+  char *text;
+  bool is_done;
 } TODOItem;
 
 typedef struct {
@@ -18,7 +18,31 @@ typedef struct {
   size_t capacity;
 } TODOList;
 
-TODOItem read_task(void) {
+int todo_list_init(TODOList *list) {
+  list->items = malloc(8 * sizeof(*list->items));
+
+  if (list->items == NULL) {
+    list->size = 0;
+    list->capacity = 8;
+    return 1;
+  };
+
+  list->size = 0;
+  list->capacity = 8;
+  return 0;
+}
+
+void todo_list_free(TODOList *list) {
+  for (size_t i = 0; i < list->size; i++) {
+    free(list->items[i].text);
+  }
+  free(list->items);
+  list->items = NULL;
+  list->size = 0;
+  list->capacity = 0;
+}
+
+TODOItem create_task(void) {
   int c;
   TODOItem task = {
       .size = 0,
@@ -64,8 +88,8 @@ void print_list(const TODOList *tasks) {
   }
 }
 
-TODOItem *expand_list(TODOItem *list, size_t len, size_t *cap) {
-  if (len < *cap) {
+TODOItem *expand_list(TODOItem *list, size_t size, size_t *cap) {
+  if (size < *cap) {
     return list;
   }
   size_t new_cap = *cap * 2;
@@ -79,9 +103,9 @@ TODOItem *expand_list(TODOItem *list, size_t len, size_t *cap) {
 
 int add_task(TODOList *tasks) {
   // get the task input
-  TODOItem task = read_task();
+  TODOItem task = create_task();
   if (task.text == NULL) {
-    fprintf(stderr, "Failed to read input\n");
+    fprintf(stderr, "Failed to create task\n");
     return 1;
   }
 
@@ -151,13 +175,8 @@ int mark_done(TODOList *tasks) {
 
 int main(void) {
   char buff[8];
-  TODOList tasks = {
-      .items = malloc(8 * sizeof(*tasks.items)),
-      .size = 0,
-      .capacity = 8,
-  };
-
-  if (tasks.items == NULL) {
+  TODOList tasks;
+  if (todo_list_init(&tasks) != 0) {
     fprintf(stderr, "Failed to allocate task list\n");
     return 1;
   };
@@ -197,10 +216,6 @@ int main(void) {
     }
   }
 
-  for (size_t i = 0; i < tasks.size; i++) {
-    free(tasks.items[i].text);
-  }
-  free(tasks.items);
-
+  todo_list_free(&tasks);
   return 0;
 }
