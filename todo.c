@@ -52,7 +52,7 @@ TODOItem read_task(void) {
   return task;
 }
 
-void print_list(TODOList *tasks) {
+void print_list(const TODOList *tasks) {
   printf("\n=========== Current List ===========\n");
   if (tasks->size == 0) {
     printf("\n=========== Empty ===========\n");
@@ -136,8 +136,8 @@ int mark_done(TODOList *tasks) {
   if (fgets(buff, sizeof(buff), stdin) == NULL) {
     return 1;
   }
-  uint8_t idx = atoi(buff) - 1;
-  if ((size_t)idx >= tasks->size) {
+  int idx = atoi(buff) - 1;
+  if (idx < 0 || (size_t)idx >= tasks->size) {
     printf("invalid number\n");
     return 1;
   }
@@ -165,6 +165,7 @@ int main(void) {
   print_list(&tasks);
   printf("\n[a] Add task\n");
   printf("[d] delete task\n");
+  printf("[m] mark task as done\n");
   printf("[q] Quit\n");
   printf("[l] List\n");
 
